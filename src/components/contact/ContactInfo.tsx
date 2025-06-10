@@ -1,15 +1,124 @@
 "use client";
 
-import React from 'react';
+import React, { ChangeEvent, FormEvent, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaTwitter } from 'react-icons/fa';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { NotifyAlerts } from '../globalFunction/Notify';
+import { createContactRequest } from '@/services/api_services/clientApiServices';
 
 const ContactInfo = () => {
   const [ref, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
   });
+
+  const queryClient = useQueryClient();
+
+  // Math captcha state
+  const [mathQuestion, setMathQuestion] = useState({ num1: 0, num2: 0, answer: 0 });
+  const [userAnswer, setUserAnswer] = useState('');
+  const [mathError, setMathError] = useState('');
+
+  // Generate new math question
+  const generateMathQuestion = () => {
+    const num1 = Math.floor(Math.random() * 10);
+    const num2 = Math.floor(Math.random() * 10);
+    setMathQuestion({
+      num1,
+      num2,
+      answer: num1 + num2
+    });
+    setUserAnswer('');
+    setMathError('');
+  };
+
+  // Generate initial math question
+  useEffect(() => {
+    generateMathQuestion();
+  }, []);
+
+  const initialFormData = {
+    firstname: '',
+    email_address: '',
+    telephone: '',
+    subject: '',
+    message: ''
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
+  const [errors, setErrors] = useState({
+    firstname: '',
+    email_address: '',
+    telephone: '',
+    subject: '',
+    message: ''
+  });
+
+  const mutation = useMutation({
+    mutationFn: createContactRequest,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["contact-requests"] });
+      
+      if(data?.data?.createContact?.status === 200){
+        NotifyAlerts("success", "Success", "Message sent successfully. We'll get back to you soon.");
+        setFormData(initialFormData);
+        generateMathQuestion();
+      }else{
+        NotifyAlerts("warning", "Warning", data?.data?.createContact?.message);
+      }
+    },
+    onError: (error) => {
+      NotifyAlerts("warning", "Warning", error.message);
+    },
+  });
+
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    let formIsValid = true;
+    let newErrors = { ...errors };
+
+    // Validate math answer
+    if (parseInt(userAnswer) !== mathQuestion.answer) {
+      setMathError('Incorrect answer, please try again');
+      NotifyAlerts("warning", "Warning", "Incorrect answer, please try again");
+      generateMathQuestion();
+      return;
+    }
+    // Validate required fields
+    const requiredFields = ['firstname',  'email_address', 'telephone', 'subject', 'message'];
+    requiredFields.forEach(field => {
+      if (!formData[field as keyof typeof formData]) {
+        newErrors[field as keyof typeof errors] = 'This field is required';
+        formIsValid = false;
+      } else {
+        newErrors[field as keyof typeof errors] = '';
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (formIsValid) {
+      mutation.mutate(formData);
+    }
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
 
   const contactDetails = [
     {
@@ -114,42 +223,37 @@ const ContactInfo = () => {
           >
             <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-8 border border-neutral-200 dark:border-neutral-700">
               <h3 className="text-2xl font-bold mb-6">Send Us a Message</h3>
-              <form className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="firstName">
-                      First Name*
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="lastName">
-                      Last Name*
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    />
-                  </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="firstname">
+                    Fullname*
+                  </label>
+                  <input
+                    type="text"
+                    id="firstname"
+                    name="firstname"
+                    value={formData.firstname}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
+                  />
+                  {errors.firstname && <p className="text-red-500 text-sm mt-1">{errors.firstname}</p>}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="email">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="email_address">
                     Email Address*
                   </label>
                   <input
                     type="email"
-                    id="email"
+                    id="email_address"
+                    name="email_address"
+                    value={formData.email_address}
+                    onChange={handleChange}
                     className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                     required
                   />
+                  {errors.email_address && <p className="text-red-500 text-sm mt-1">{errors.email_address}</p>}
                 </div>
                 
                 <div>
@@ -159,8 +263,12 @@ const ContactInfo = () => {
                   <input
                     type="tel"
                     id="phone"
+                    name="telephone"
+                    value={formData.telephone}
+                    onChange={handleChange}
                     className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                   />
+                  {errors.telephone && <p className="text-red-500 text-sm mt-1">{errors.telephone}</p>}
                 </div>
                 
                 <div>
@@ -169,16 +277,20 @@ const ContactInfo = () => {
                   </label>
                   <select
                     id="subject"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
                     className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                     required
                   >
-                    <option value="">Select a subject</option>
+                    <option value="" disabled selected>Select a subject</option>
                     <option value="demo">Request a Demo</option>
                     <option value="quote">Get a Quote</option>
                     <option value="support">Technical Support</option>
                     <option value="partnership">Partnership Inquiry</option>
                     <option value="other">Other</option>
                   </select>
+                  {errors.subject && <p className="text-red-500 text-sm mt-1">{errors.subject}</p>}
                 </div>
                 
                 <div>
@@ -187,18 +299,46 @@ const ContactInfo = () => {
                   </label>
                   <textarea
                     id="message"
-                    rows={5}
+                    name="message"
+                    value={formData.message}
+                    onChange={handleChange}
+                    rows={4}
                     className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="How can we help you?"
                     required
                   ></textarea>
+                  {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message}</p>}
                 </div>
                 
+                {/* Mathematics area */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    Please solve this math problem to verify you're human: *
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-neutral-700 dark:text-neutral-300">
+                      {mathQuestion.num1} + {mathQuestion.num2} =
+                    </span>
+                    <input
+                      type="number"
+                      value={userAnswer}
+                      onChange={(e) => {
+                        setUserAnswer(e.target.value);
+                        setMathError('');
+                      }}
+                      className="w-20 px-2 py-1 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    />
+                  </div>
+                  {mathError && (
+                    <p className="text-red-500 text-sm">{mathError}</p>
+                  )}
+                </div>
                 <button
                   type="submit"
-                  className="w-full py-3 px-6 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors"
+                  disabled={mutation.isPending}
+                  className="w-full py-3 px-6 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
-                  Send Message
+                  {mutation.isPending ? "Sending..." : "Send Message"}
                 </button>
               </form>
             </div>

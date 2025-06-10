@@ -1,11 +1,71 @@
 "use client";
 
-import React from 'react';
+import React, { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { FaTwitter, FaFacebook, FaLinkedin, FaInstagram, FaPhone, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createSubscriber } from '@/services/api_services/clientApiServices';
+import { NotifyAlerts } from '../globalFunction/Notify';
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const queryClient = useQueryClient();
+
+
+const [user, setUser] = useState({
+  email_address: "",
+})
+
+const [errors, setErrors] = useState(
+  {
+  email_address: ""
+}
+);
+
+const mutation = useMutation({
+  mutationFn: createSubscriber,
+  onSuccess: (data) => {
+    queryClient.invalidateQueries({ queryKey: ["create-subscriber"] });
+
+    if(data?.createSubscriber?.status === 200){
+      NotifyAlerts("success", "Subscribed", "Email successfully submitted");
+   setUser({
+    email_address: ""
+    })
+    }
+  },
+  onError: (error) => {
+    NotifyAlerts("warning", "warning", error.message);
+  },
+});
+
+const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+
+  let formIsValid = true;
+ 
+  let error = { ...errors };
+  
+
+  let msg = "This field is required";
+
+  if (!user.email_address) {
+    error.email_address = msg;
+    formIsValid = false;
+  }
+
+
+  if (formIsValid) {
+    try {
+      mutation.mutate({email_address:user.email_address});
+    } catch (err) {
+      console.log(err);
+    }
+  }
+};
+
+
+
 
   return (
     <footer className="bg-neutral-900 text-white">
@@ -87,22 +147,31 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-bold mb-4">Stay Updated</h3>
             <p className="text-neutral-300 mb-4">Subscribe to our newsletter for the latest updates and offers.</p>
-            <form className="space-y-3">
+          
+          
+          {/* subscriber area */}
+            <form className="space-y-3" onSubmit={handleSubmit}>
               <div>
                 <input
                   type="email"
+                  value={user.email_address}
+                  onChange={(e) => setUser({ ...user, email_address: e.target.value })}
                   placeholder="Your email address"
                   className="w-full px-4 py-2 rounded-md bg-neutral-800 border border-neutral-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 />
               </div>
               <button
+              disabled={mutation.isPending}
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-dark text-white py-2 px-4 rounded-md transition-colors duration-300"
               >
-                Subscribe
+                {mutation.isPending ? "Subscribing..." : "Subscribe"}
               </button>
             </form>
+
+
+
             <div className="flex space-x-4 mt-6">
               <a href="https://twitter.com/adeMansoor" className="text-neutral-300 hover:text-primary-light transition-colors" target="_blank" rel="noopener noreferrer">
                 <FaTwitter size={20} />

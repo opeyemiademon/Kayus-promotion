@@ -63,7 +63,7 @@ const DemoVideosSection = () => {
       duration: '2:13',
       description: 'See how to mark student attendance, calculate number of days, and generate attendance report automatically.',
       thumbnail: '/images/kayus/attendance.png',
-      videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+      videoUrl: 'https://www.youtube.com/embed/-vfWVTaZtRI?si=yMdj4wuwBRbSwTTV',
       icon: <FaCheck />
     },
     /* {

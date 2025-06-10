@@ -1,6 +1,7 @@
 import '@/styles/globals.css';
 import type { Metadata } from 'next';
 import { Inter, Poppins, Open_Sans } from 'next/font/google';
+import Providers from './providers';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 const poppins = Poppins({ 
@@ -32,7 +33,9 @@ export default function RootLayout({
         <link rel="icon" href="/images/logo.png" />
       </head>
       <body className={`${inter.variable} ${poppins.variable} ${openSans.variable} font-sans`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

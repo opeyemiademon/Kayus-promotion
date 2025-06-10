@@ -1,14 +1,110 @@
 "use client";
 
-import React from 'react';
+import React,{ChangeEvent, FormEvent, useState} from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { NotifyAlerts } from '../globalFunction/Notify';
+import { createDemoRequest } from '@/services/api_services/clientApiServices';
 
 const DemoRequest = () => {
   const [ref, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
   });
+  const queryClient = useQueryClient();
+  const initialFormData: { firstname: string; lastname: string; email_address: string; school_name: string; telephone: string; school_type: string; student_range: string; is_subscribe: boolean; information: string; } = {
+    firstname: '',
+    lastname: '',
+    email_address: '',
+    school_name: '',
+    telephone: '',
+    school_type: '',
+    student_range: '',
+    is_subscribe: false,
+    information: ''
+  };
+  
+  const initialErrors: { firstname: string; lastname: string; email_address: string; school_name: string; telephone: string; school_type: string; student_range: string; }= {
+    firstname: '',
+    lastname: '',
+    email_address: '',
+    school_name: '',
+    telephone: '',
+    school_type: '',
+    student_range: ''
+  };
+
+
+  const [formData, setFormData] = useState(initialFormData);
+  const [errors, setErrors] = useState(initialErrors);
+
+
+  const mutation = useMutation({
+    mutationFn: createDemoRequest,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["create-subscriber"] });
+  
+      if(data?.createDemoRequest?.status === 200){
+        NotifyAlerts("success", "Subscribed", "Request successfully submitted, we will get back to you soon");
+     setFormData({
+      firstname: '',
+    lastname: '',
+    email_address: '',
+    school_name: '',
+    telephone: '',
+    school_type: '',
+    student_range: '',
+    is_subscribe: false,
+    information: ''
+      })
+      }
+    },
+    onError: (error) => {
+      NotifyAlerts("warning", "warning", error.message);
+    },
+  });
+
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    let formIsValid = true;
+    let newErrors = { ...errors };
+
+    // Validate required fields
+    const requiredFields = ['firstname', 'lastname', 'email_address', 'school_name', 'telephone', 'school_type', 'student_range'];
+    requiredFields.forEach(field => {
+      if (!formData[field as keyof typeof formData]) {
+        newErrors[field as keyof typeof errors] = 'This field is required';
+        formIsValid = false;
+      } else {
+        newErrors[field as keyof typeof errors] = '';
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (formIsValid) {
+      mutation.mutate(formData);
+    }
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
+
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
 
   return (
     <section className="py-16 md:py-24 bg-neutral-50 dark:bg-neutral-900" id="demo">
@@ -68,136 +164,134 @@ const DemoRequest = () => {
           >
             <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6 md:p-8">
               <h3 className="text-2xl font-bold mb-6">Request a Free Demo</h3>
-              <form className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="firstName">
-                      First Name*
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="lastName">
-                      Last Name*
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    />
-                  </div>
-                </div>
-                
+              <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="schoolName">
-                    School Name*
-                  </label>
+                  <label className="block text-sm font-medium mb-1">First Name *</label>
                   <input
                     type="text"
-                    id="schoolName"
-                    className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    name="firstname"
+                    value={formData.firstname}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
                     required
                   />
+                  {errors.firstname && <p className="text-red-500 text-sm mt-1">{errors.firstname}</p>}
                 </div>
-                
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="email">
-                    Email Address*
-                  </label>
+                  <label className="block text-sm font-medium mb-1">Last Name *</label>
                   <input
-                    type="email"
-                    id="email"
-                    className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    type="text"
+                    name="lastname"
+                    value={formData.lastname}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
                     required
                   />
+                  {errors.lastname && <p className="text-red-500 text-sm mt-1">{errors.lastname}</p>}
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="phone">
-                    Phone Number*
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                    required
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="schoolType">
-                      School Type*
-                    </label>
-                    <select
-                      id="schoolType"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    >
-                      <option value="">Select School Type</option>
-                      <option value="nursery">Nursery School</option>
-                      <option value="primary">Primary School</option>
-                      <option value="secondary">Secondary School</option>
-                      <option value="mixed">Mixed (Multiple Levels)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="studentCount">
-                      Number of Students*
-                    </label>
-                    <select
-                      id="studentCount"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    >
-                      <option value="">Select Range</option>
-                      <option value="less-than-100">Less than 100</option>
-                      <option value="100-300">100 - 300</option>
-                      <option value="301-500">301 - 500</option>
-                      <option value="501-1000">501 - 1000</option>
-                      <option value="more-than-1000">More than 1000</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" htmlFor="message">
-                    Additional Information
-                  </label>
-                  <textarea
-                    id="message"
-                    rows={4}
-                    className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Tell us about your specific requirements or challenges"
-                  ></textarea>
-                </div>
-                
-                <div>
-                  <label className="flex items-start">
-                    <input
-                      type="checkbox"
-                      className="mt-1 mr-2"
-                      required
-                    />
-                    <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                      I agree to receive communications from Admotron Solutions about KAYUS School Management System. You can unsubscribe at any time.
-                    </span>
-                  </label>
-                </div>
-                
-                <button
-                  type="submit"
-                  className="w-full py-3 px-6 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors"
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  name="email_address"
+                  value={formData.email_address}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
+                  required
+                />
+                {errors.email_address && <p className="text-red-500 text-sm mt-1">{errors.email_address}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">School Name *</label>
+                <input
+                  type="text"
+                  name="school_name"
+                  value={formData.school_name}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
+                  required
+                />
+                {errors.school_name && <p className="text-red-500 text-sm mt-1">{errors.school_name}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone Number *</label>
+                <input
+                  type="tel"
+                  name="telephone"
+                  value={formData.telephone}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
+                  required
+                />
+                {errors.telephone && <p className="text-red-500 text-sm mt-1">{errors.telephone}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">School Type *</label>
+                <select
+                  name="school_type"
+                  value={formData.school_type}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
+                  required
                 >
-                  Schedule Demo
-                </button>
-              </form>
+                  <option value="" selected disabled>Select school type</option>
+                  <option value="Nursery">Nursery</option>
+                  <option value="Primary">Primary</option>
+                  <option value="Secondary">Secondary</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+                {errors.school_type && <p className="text-red-500 text-sm mt-1">{errors.school_type}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Number of Students *</label>
+                <select
+                  name="student_range"
+                  value={formData.student_range}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
+                  required
+                >
+                  <option value="" selected disabled>Select range</option>
+                  <option value="1-100">1-100</option>
+                  <option value="101-500">101-500</option>
+                  <option value="501-1000">501-1000</option>
+                  <option value="1000+">1000+</option>
+                </select>
+                {errors.student_range && <p className="text-red-500 text-sm mt-1">{errors.student_range}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Additional Information</label>
+                <textarea
+                  name="information"
+                  value={formData.information}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 focus:ring-2 focus:ring-primary"
+                  rows={4}
+                  placeholder="Tell us about your specific needs or questions..."
+                />
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="is_subscribe"
+                  checked={formData.is_subscribe}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-primary border-neutral-300"
+                />
+                <label className="ml-2 block text-sm text-neutral-600 dark:text-neutral-400">
+                  Subscribe to our newsletter for updates and educational content
+                </label>
+              </div>
+              <button
+                type="submit"
+                disabled={mutation.isPending}
+                className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-6 rounded-md transition-colors duration-300 disabled:opacity-50"
+              >
+                {mutation.isPending ? "Submitting..." : "Request Demo"}
+              </button>
+            </form>
             </div>
           </motion.div>
         </div>
