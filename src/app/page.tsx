@@ -1,4 +1,5 @@
-import React from 'react';
+"use client";
+import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import HeroSection from '@/components/home/HeroSection';
 import VideoIntroduction from '@/components/home/VideoIntroduction';
@@ -12,10 +13,22 @@ import FreeDeploymentBanner from '@/components/home/FreeDeploymentBanner';
 import ProductPortfolio from '@/components/home/ProductPortfolio';
 import SecurityBadges from '@/components/common/SecurityBadges';
 import CallToAction from '@/components/home/CallToAction';
+import ImageModal from '@/components/common/ImageModal';
 
 export default function Home() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
   return (
     <MainLayout>
+      <ImageModal isOpen={isModalOpen} onClose={handleCloseModal} />
       <HeroSection />
       <VideoIntroduction />
       <ValueProposition />
