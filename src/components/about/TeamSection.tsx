@@ -76,7 +76,7 @@ const TeamSection = () => {
     
     },
     {
-      name: 'Nurudeen Ishola',
+      name: 'Nurudeen Alowonle',
       position: 'Customer Success Manager',
       bio: 'Nurudeen works closely with schools to ensure successful implementation and adoption of the KAYUS system.',
       image: '/images/staff/nurudeen.jpeg',
